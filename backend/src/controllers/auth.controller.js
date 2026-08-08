@@ -4,9 +4,8 @@ import generateToken from "../utils/generateToken.js";
 
 export const signup = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, realtorId } = req.body;
 
-    
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -14,7 +13,6 @@ export const signup = async (req, res) => {
       });
     }
 
-   
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -23,16 +21,31 @@ export const signup = async (req, res) => {
         message: "Email already registered.",
       });
     }
+    let linkedRealtor = null;
 
-  
+    if (realtorId) {
+      linkedRealtor = await User.findOne({
+        _id: realtorId,
+        role: "realtor",
+      });
+
+      if (!linkedRealtor) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid realtor",
+        });
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-  
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-     
+      role: "user",
+      createdBy: linkedRealtor ? "Realtor" : "Self",
+      realtorId: linkedRealtor ? linkedRealtor._id : null,
     });
 
     return res.status(201).json({
@@ -45,6 +58,7 @@ export const signup = async (req, res) => {
         role: user.role,
       },
     });
+
   } catch (error) {
     console.error(error);
 
